@@ -1,0 +1,11 @@
+# Python
+__pycache__/
+*.pyc
+venv/
+
+# Database & logs
+securelab.db
+*.log
+
+# OS
+.DS_Store
