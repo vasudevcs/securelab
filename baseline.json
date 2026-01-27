@@ -1,0 +1,73 @@
+{
+    "created_at": "2026-01-20 14:40:15.973117",
+    "trusted_devices": [
+        [
+            "input",
+            "Acer_Elite_USB_Optical_Mouse"
+        ],
+        [
+            "input",
+            "\"HD-Audio Generic Rear Mic\""
+        ],
+        [
+            "usb",
+            "xHCI_Host_Controller"
+        ],
+        [
+            "input",
+            "\"Video Bus\""
+        ],
+        [
+            "input",
+            "\"HD-Audio Generic HDMI/DP,pcm=3\""
+        ],
+        [
+            "input",
+            "\"HD-Audio Generic Front Headphone\""
+        ],
+        [
+            "input",
+            "\"Power Button\""
+        ],
+        [
+            "usb",
+            "Acer_Elite_USB_Optical_Mouse"
+        ],
+        [
+            "input",
+            "\"HD-Audio Generic Line Out\""
+        ],
+        [
+            "input",
+            "USB_Keyboard"
+        ],
+        [
+            "input",
+            "\"HD-Audio Generic HDMI/DP,pcm=7\""
+        ],
+        [
+            "usb",
+            "ASM107x"
+        ],
+        [
+            "input",
+            "\"HD-Audio Generic Front Mic\""
+        ],
+        [
+            "input",
+            "\"HD-Audio Generic Line\""
+        ],
+        [
+            "usb",
+            "USB2.0_Hub"
+        ],
+        [
+            "usb",
+            "USB_Keyboard"
+        ],
+        [
+            "input",
+            "\"PC Speaker\""
+        ]
+    ]
+}
