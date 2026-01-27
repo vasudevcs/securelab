@@ -1,0 +1,13 @@
+[Unit]
+Description=SecureLab Endpoint Monitoring Agent
+After=network.target
+
+[Service]
+ExecStart=/opt/securelab/venv/bin/python /opt/securelab/agent.py
+WorkingDirectory=/opt/securelab
+User=root
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
