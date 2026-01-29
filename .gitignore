@@ -1,3 +1,4 @@
+
 # Python
 __pycache__/
 *.pyc
@@ -8,11 +9,22 @@ venv/
 
 # Databases
 *.db
+# Virtual environment
+venv/
+
+# Database
+securelab.db
+ 32501df (Add camera simulator and vigilance alert integration)
 
 # Logs
 *.log
 
+ HEAD
 # OS junk
 .DS_Store
 Thumbs.db
 
+#Python cache
+__pycache__/
+*.pyc
+ 32501df (Add camera simulator and vigilance alert integration)

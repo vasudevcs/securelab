@@ -2,6 +2,7 @@ from flask import Flask, request, jsonify, render_template_string, redirect, url
 from werkzeug.security import generate_password_hash, check_password_hash
 import sqlite3
 from datetime import datetime
+import requests
 
 app = Flask(__name__)
 app.secret_key = "securelab-secret-key-change-this"
@@ -9,6 +10,33 @@ DB = "securelab.db"
 
 ADMIN_USER = "admin"
 ADMIN_PASS_HASH = generate_password_hash("admin123")
+
+def trigger_camera_alert(hostname, reason):
+    CAMERA_ENDPOINT = "http://127.0.0.1:9000/camera-alert"
+
+    payload = {
+        "system": hostname,
+        "reason": reason,
+        "time": str(datetime.now())
+    }
+
+    try:
+        requests.post(CAMERA_ENDPOINT, json=payload, timeout=3)
+
+        conn = sqlite3.connect(DB)
+        c = conn.cursor()
+        c.execute(
+            "UPDATE camera_status SET state=?, last_trigger=? WHERE id=1",
+            ("VIGILANT", str(datetime.now()))
+        )
+        conn.commit()
+        conn.close()
+
+        print("[CCTV] Camera set to VIGILANT")
+
+    except Exception as e:
+        print("[CCTV] Failed:", e)
+
 
 def init_db():
     conn = sqlite3.connect(DB)
@@ -29,6 +57,19 @@ def init_db():
             last_seen REAL,
             system_group TEXT DEFAULT 'Ungrouped'
         )
+    """)
+    c.execute("""
+        CREATE TABLE IF NOT EXISTS camera_status (
+            id INTEGER PRIMARY KEY CHECK (id = 1),
+            state TEXT,
+            last_trigger TEXT
+        )
+    """)
+
+# ensure single row exists
+    c.execute("""
+        INSERT OR IGNORE INTO camera_status (id, state, last_trigger)
+        VALUES (1, 'NORMAL', '')
     """)
 
     conn.commit()
@@ -66,6 +107,10 @@ def receive_event():
     )
     conn.commit()
     conn.close()
+    
+    if "ALERT" in data["event"]:
+        trigger_camera_alert(data["hostname"], data["event"])
+
     return jsonify({"status": "ok"})
 
 @app.route("/heartbeat", methods=["POST"])
@@ -153,8 +198,8 @@ def dashboard():
 
     conn.close()
 
-    now = datetime.now().timestamp()
     status = []
+    now = datetime.now().timestamp()
 
     for host, last_seen in systems:
         age = now - last_seen
@@ -167,13 +212,12 @@ def dashboard():
         else:
             state = "STALE"
 
-        # offline filter should hide ONLY online systems
         if show_offline_only and state == "ONLINE":
             continue
 
         status.append((host, state, last_seen_text))
-    
-          
+       
+      
     total_systems = len(status)
     online_systems = sum(1 for s in status if s[1] == "ONLINE")
     offline_systems = sum(1 for s in status if s[1] == "OFFLINE")
@@ -181,6 +225,47 @@ def dashboard():
 
 
     alert_count = sum(1 for e in events if "ALERT" in e[1])
+    conn = sqlite3.connect(DB)
+    c = conn.cursor()
+
+    camera = c.execute(
+        "SELECT state FROM camera_status WHERE id=1"
+    ).fetchone()
+
+    current_camera_state = camera[0]
+
+# Trigger camera ONLY ONCE
+    if stale_systems > 0 and current_camera_state != "VIGILANT":
+        trigger_camera_alert(
+            "MULTIPLE SYSTEMS",
+            "System offline beyond allowed window"
+        )
+
+# Reset camera when everything is safe
+    if stale_systems == 0 and offline_systems == 0 and current_camera_state != "NORMAL":
+        c.execute(
+            "UPDATE camera_status SET state='NORMAL' WHERE id=1"
+        )
+        conn.commit()
+
+    conn.close()
+# ================= CAMERA STATE =================
+    conn = sqlite3.connect(DB)
+    c = conn.cursor()
+
+    camera = c.execute(
+        "SELECT state, last_trigger FROM camera_status WHERE id=1"
+    ).fetchone()
+
+    if camera:
+        camera_state = camera[0]
+        camera_last_trigger = camera[1]
+    else:
+        camera_state = "UNKNOWN"
+        camera_last_trigger = ""
+
+    conn.close()
+# ===============================================
 
     html = """
     <!DOCTYPE html>
@@ -315,7 +400,18 @@ def dashboard():
         <h4>⚠️ Stale</h4>
         <p class="stale"><strong>{{ stale_systems }}</strong></p>
     </div>
-
+    <div class="card">
+        <h4>📷 Camera Status</h4>
+        <p style="font-weight:bold;
+           color: {{ 'red' if camera_state=='VIGILANT' else 'green' }}">
+            {{ camera_state }}
+        </p>
+        {% if camera_last_trigger %}
+        <p style="font-size:12px; color:#6b7280;">
+            Last alert: {{ camera_last_trigger }}
+        </p>
+        {% endif %}
+    </div>
 
     <h3>System Status</h3>
     <div class="card-container">
@@ -379,6 +475,8 @@ def dashboard():
        selected_group=selected_group,
        stale_systems=stale_systems,
        alert_count=alert_count,
+       camera_state=camera_state,
+       camera_last_trigger=camera_last_trigger   
    )
 @app.route("/system/<hostname>")
 def system_detail(hostname):
